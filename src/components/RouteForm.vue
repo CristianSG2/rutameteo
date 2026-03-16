@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 
+defineProps({ loading: { type: Boolean, default: false } })
 const emit = defineEmits(['search'])
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -132,8 +133,8 @@ function handleSubmit() {
       </div>
     </div>
 
-    <button type="submit" class="btn-submit">
-      Ver el tiempo en la ruta
+    <button type="submit" class="btn-submit" :disabled="loading">
+      {{ loading ? 'Calculando…' : 'Ver el tiempo en la ruta' }}
     </button>
   </form>
 </template>
@@ -282,7 +283,8 @@ function handleSubmit() {
   border: none;
   transition: opacity 0.2s, transform 0.1s;
 
-  &:hover { opacity: 0.9; }
-  &:active { transform: scale(0.98); }
+  &:hover:not(:disabled) { opacity: 0.9; }
+  &:active:not(:disabled) { transform: scale(0.98); }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 </style>
