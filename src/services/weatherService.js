@@ -6,6 +6,7 @@ const HOURLY_VARS = [
   'windspeed_10m',
   'winddirection_10m',
   'visibility',
+  'weathercode',
 ].join(',')
 
 /**
@@ -50,8 +51,15 @@ export async function fetchWeatherForPoints(points) {
       if (!res.ok) throw new Error(`Open-Meteo error for (${lat},${lon}): ${res.status}`)
 
       const data = await res.json()
-      const { time, temperature_2m, precipitation_probability, windspeed_10m, winddirection_10m, visibility } =
-        data.hourly
+      const {
+        time,
+        temperature_2m,
+        precipitation_probability,
+        windspeed_10m,
+        winddirection_10m,
+        visibility,
+        weathercode,
+      } = data.hourly
 
       const idx = closestHourIndex(time, estimatedArrival)
 
@@ -64,6 +72,7 @@ export async function fetchWeatherForPoints(points) {
         windspeed: windspeed_10m[idx],
         winddirection: winddirection_10m[idx],
         visibility: visibility[idx],
+        weathercode: weathercode[idx],
         time: time[idx],
       }
     })
