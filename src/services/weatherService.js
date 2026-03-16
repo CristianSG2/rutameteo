@@ -43,7 +43,7 @@ export async function fetchWeatherForPoints(points) {
       url.searchParams.set('latitude', lat)
       url.searchParams.set('longitude', lon)
       url.searchParams.set('hourly', HOURLY_VARS)
-      url.searchParams.set('forecast_days', 3)
+      url.searchParams.set('forecast_days', 7)
       url.searchParams.set('timezone', 'auto')
 
       const res = await fetch(url.toString())

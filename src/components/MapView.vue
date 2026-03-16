@@ -38,6 +38,7 @@ function buildPopup(point) {
 
   return `
     <div class="wp-popup">
+      ${point.label ? `<div class="wp-popup__label">${point.label}</div>` : ''}
       ${time ? `<div class="wp-popup__time">${time}</div>` : ''}
       <div class="wp-popup__row">
         <span class="wp-popup__icon" title="Temperatura">🌡</span>
@@ -59,15 +60,22 @@ function buildPopup(point) {
   `
 }
 
-// ── Custom marker icon ────────────────────────────────────────────────────
-function makeIcon(temp) {
-  const label = temp != null ? `${Math.round(temp)}°` : '?'
+// ── Custom marker icons by role ───────────────────────────────────────────
+const ROLE_COLORS = {
+  origin:       { bg: '#E8A030', text: '#0b1220' },
+  destination:  { bg: '#3d7fd4', text: '#ffffff' },
+  intermediate: { bg: '#1a2640', text: '#e8edf5' },
+}
+
+function makeIcon(point) {
+  const label = point.temperature != null ? `${Math.round(point.temperature)}°` : '?'
+  const { bg, text } = ROLE_COLORS[point.role] ?? ROLE_COLORS.intermediate
   return L.divIcon({
     className: '',
-    html: `<div class="wp-marker">${label}</div>`,
+    html: `<div class="wp-marker" style="background:${bg};color:${text}">${label}</div>`,
     iconSize: [40, 28],
     iconAnchor: [20, 14],
-    popupAnchor: [0, -16],
+    popupAnchor: [0, -18],
   })
 }
 
@@ -80,9 +88,9 @@ function drawRoute() {
 
   if (props.routeGeometry.length > 1) {
     routeLayer = L.polyline(props.routeGeometry, {
-      color: '#3d7fd4',
+      color: '#E8A030',
       weight: 4,
-      opacity: 0.85,
+      opacity: 0.9,
     }).addTo(map)
   }
 
@@ -90,13 +98,13 @@ function drawRoute() {
 
   props.weatherPoints.forEach((point) => {
     const marker = L.marker([point.lat, point.lon], {
-      icon: makeIcon(point.temperature),
+      icon: makeIcon(point),
     })
-    marker.bindPopup(buildPopup(point), { maxWidth: 200 })
+    marker.bindPopup(buildPopup(point), { maxWidth: 210 })
     markersLayer.addLayer(marker)
   })
 
-  // Fit bounds to route or markers
+  // Fit bounds to route, or markers if no route yet
   const bounds = props.routeGeometry.length > 1
     ? L.latLngBounds(props.routeGeometry)
     : props.weatherPoints.length
@@ -104,7 +112,7 @@ function drawRoute() {
       : null
 
   if (bounds?.isValid()) {
-    map.fitBounds(bounds, { padding: [40, 40] })
+    map.fitBounds(bounds, { padding: [48, 48] })
   }
 }
 
@@ -216,6 +224,17 @@ watch(
 .wp-popup {
   font-size: 13px;
   line-height: 1.6;
+
+  &__label {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--app-text);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
 
   &__time {
     font-weight: 700;
