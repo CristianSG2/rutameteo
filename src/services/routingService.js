@@ -1,4 +1,5 @@
 const OSRM_BASE = 'https://router.project-osrm.org/route/v1/driving'
+const OSRM_TABLE = 'https://router.project-osrm.org/table/v1/driving'
 
 /**
  * Haversine distance in meters between two [lat, lon] points.
@@ -16,8 +17,9 @@ function haversineMeters([lat1, lon1], [lat2, lon2]) {
 
 /**
  * Fetches a driving route from OSRM.
+ *
  * @param {{ lat: number, lon: number }[]} waypoints  at least 2 entries
- * @returns {Promise<{ geometry: [number,number][], duration: number, distance: number, legs: any[] }>}
+ * @returns {Promise<{ geometry: [number,number][], duration: number, distance: number }>}
  */
 export async function getRoute(waypoints) {
   if (waypoints.length < 2) throw new Error('At least 2 waypoints required')
@@ -40,32 +42,56 @@ export async function getRoute(waypoints) {
     geometry,
     duration: route.duration,   // seconds
     distance: route.distance,   // meters
-    legs: route.legs,
   }
 }
 
 /**
- * Samples intermediate points every `intervalKm` km along the route geometry
- * and estimates the arrival time at each, based on OSRM's average speed.
+ * Uses the OSRM Table API to get accurate travel durations (seconds) from
+ * origin to each point in the list.
  *
- * @param {[number,number][]} geometry      decoded polyline from getRoute()
- * @param {number} departureTime            unix timestamp (seconds)
- * @param {number} intervalKm              spacing in km between samples
- * @param {number} totalDuration           total route duration in seconds (from OSRM)
- * @param {number} totalDistance           total route distance in meters (from OSRM)
- * @returns {{ lat: number, lon: number, estimatedArrival: number, distanceFromStart: number }[]}
+ * @param {{ lat: number, lon: number }} origin
+ * @param {{ lat: number, lon: number }[]} points
+ * @returns {Promise<number[]>} durations[j] = seconds from origin to points[j]
  */
-export function getIntermediatePoints(geometry, departureTime, intervalKm, totalDuration, totalDistance) {
+async function getAccurateTravelTimes(origin, points) {
+  const coords = [origin, ...points]
+    .map((p) => `${p.lon},${p.lat}`)
+    .join(';')
+  const url = `${OSRM_TABLE}/${coords}?sources=0&annotations=duration`
+
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`OSRM Table error: ${res.status}`)
+
+  const data = await res.json()
+  if (data.code !== 'Ok') throw new Error(`OSRM Table: ${data.message || data.code}`)
+
+  // durations[0] is the row for source 0 (origin).
+  // Index 0 = origin→origin (0s), index j+1 = origin→points[j].
+  const row = data.durations[0]
+  return points.map((_, j) => row[j + 1])
+}
+
+/**
+ * Samples points every `intervalKm` km along the route geometry, then
+ * replaces the interpolated arrival times with accurate values from the
+ * OSRM Table API.
+ *
+ * @param {[number,number][]} geometry       [lat,lon] array from getRoute()
+ * @param {number}            departureTime  Unix timestamp in seconds
+ * @param {number}            intervalKm     Spacing in km between samples
+ * @param {number}            totalDuration  Total route duration in seconds (from OSRM)
+ * @returns {Promise<{ lat: number, lon: number, estimatedArrival: number, distanceFromStart: number }[]>}
+ */
+export async function getIntermediatePoints(geometry, departureTime, intervalKm, totalDuration) {
   if (!geometry?.length) return []
 
   const intervalM = intervalKm * 1000
-  const avgSpeedMps = totalDistance / totalDuration // m/s
 
+  // ── Step 1: sample geometric points along the polyline ────────────────────
   const points = []
-  let accumulated = 0
+  let accDist = 0
   let nextTarget = intervalM
 
-  // Always include start
   points.push({
     lat: geometry[0][0],
     lon: geometry[0][1],
@@ -75,33 +101,41 @@ export function getIntermediatePoints(geometry, departureTime, intervalKm, total
 
   for (let i = 1; i < geometry.length; i++) {
     const segDist = haversineMeters(geometry[i - 1], geometry[i])
-    const prevAcc = accumulated
-    accumulated += segDist
+    const prevAccDist = accDist
+    accDist += segDist
 
-    while (nextTarget <= accumulated) {
-      // Interpolate position along this segment
-      const t = (nextTarget - prevAcc) / segDist
-      const lat = geometry[i - 1][0] + t * (geometry[i][0] - geometry[i - 1][0])
-      const lon = geometry[i - 1][1] + t * (geometry[i][1] - geometry[i - 1][1])
-      const traveledSeconds = nextTarget / avgSpeedMps
+    while (nextTarget <= accDist) {
+      const t = segDist > 0 ? (nextTarget - prevAccDist) / segDist : 0
       points.push({
-        lat,
-        lon,
-        estimatedArrival: departureTime + Math.round(traveledSeconds),
+        lat: geometry[i - 1][0] + t * (geometry[i][0] - geometry[i - 1][0]),
+        lon: geometry[i - 1][1] + t * (geometry[i][1] - geometry[i - 1][1]),
+        estimatedArrival: 0,   // filled in step 2
         distanceFromStart: nextTarget,
       })
       nextTarget += intervalM
     }
   }
 
-  // Always include end
   const lastP = geometry[geometry.length - 1]
   points.push({
     lat: lastP[0],
     lon: lastP[1],
-    estimatedArrival: departureTime + Math.round(totalDuration),
-    distanceFromStart: totalDistance,
+    estimatedArrival: 0,   // filled in step 2
+    distanceFromStart: accDist,
   })
+
+  // ── Step 2: replace interpolated times with OSRM Table API values ─────────
+  const origin = points[0]
+  const rest   = points.slice(1)   // intermediate + destination
+
+  const durations = await getAccurateTravelTimes(origin, rest)
+  rest.forEach((p, j) => {
+    p.estimatedArrival = departureTime + Math.round(durations[j])
+  })
+
+  // Fallback: if Table API returned null for the last point, use OSRM route duration
+  const last = points[points.length - 1]
+  if (!last.estimatedArrival) last.estimatedArrival = departureTime + Math.round(totalDuration)
 
   return points
 }

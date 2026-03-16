@@ -33,8 +33,10 @@ function buildPopup(point) {
   const vis   = point.visibility != null
     ? point.visibility >= 1000 ? `${(point.visibility / 1000).toFixed(0)} km` : `${point.visibility} m`
     : '—'
-  const time  = point.time
-    ? new Date(point.time).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+  const time  = point.estimatedArrival != null
+    ? new Date(point.estimatedArrival * 1000).toLocaleTimeString('es-ES', {
+        hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid',
+      })
     : ''
 
   return `
