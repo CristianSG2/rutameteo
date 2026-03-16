@@ -1,0 +1,112 @@
+@use 'variables' as *;
+
+// ─── Reset ──────────────────────────────────────────────────────────────────
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  background-color: var(--app-bg);
+  color: var(--app-text);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// ─── Typography ─────────────────────────────────────────────────────────────
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.2;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+a {
+  color: var(--app-blue);
+  text-decoration: none;
+
+  &:hover { text-decoration: underline; }
+}
+
+// ─── Inputs & buttons base ──────────────────────────────────────────────────
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+  font-size: inherit;
+  border: none;
+  outline: none;
+}
+
+input[type='text'],
+input[type='date'],
+input[type='time'] {
+  background: var(--app-surface);
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
+  border-radius: $radius-base;
+  padding: 8px 12px;
+  width: 100%;
+  transition: border-color 0.2s;
+
+  &::placeholder { color: var(--app-muted); }
+
+  &:focus {
+    border-color: var(--app-blue);
+  }
+}
+
+// ─── Scrollbar ──────────────────────────────────────────────────────────────
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--app-border);
+  border-radius: 99px;
+}
+
+// ─── Leaflet overrides ──────────────────────────────────────────────────────
+.leaflet-container {
+  background: $bg;
+  font-family: inherit;
+}
+
+.leaflet-popup-content-wrapper {
+  background: var(--app-card);
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
+  border-radius: $radius-card;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.leaflet-popup-tip {
+  background: var(--app-card);
+}
+
+.leaflet-popup-content {
+  margin: 12px 16px;
+}
+
+.leaflet-control-attribution {
+  background: rgba(11, 18, 32, 0.7) !important;
+  color: var(--app-muted) !important;
+  font-size: 10px;
+
+  a { color: var(--app-muted) !important; }
+}
