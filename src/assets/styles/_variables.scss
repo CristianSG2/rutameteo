@@ -1,0 +1,51 @@
+// ─── Color palette: "cielo nocturno" ───────────────────────────────────────
+:root {
+  --app-bg:         #0b1220;
+  --app-surface:    #131c2e;
+  --app-card:       #1a2640;
+  --app-border:     rgba(255, 255, 255, 0.08);
+
+  --app-amber:      #E8A030;
+  --app-amber-dim:  rgba(232, 160, 48, 0.12);
+
+  --app-text:       #e8edf5;
+  --app-muted:      #7a8aaa;
+
+  --app-blue:       #3d7fd4;
+  --app-rain:       #5ba8e8;
+  --app-wind:       #7ecbaa;
+  --app-fog:        #a89fcb;
+  --app-warn:       #e8844a;
+}
+
+// ─── SCSS tokens (for use inside SCSS files) ────────────────────────────────
+$bg:          #0b1220;
+$surface:     #131c2e;
+$card:        #1a2640;
+$border:      rgba(255, 255, 255, 0.08);
+
+$amber:       #E8A030;
+$amber-dim:   rgba(232, 160, 48, 0.12);
+
+$text:        #e8edf5;
+$muted:       #7a8aaa;
+
+$blue:        #3d7fd4;
+$rain:        #5ba8e8;
+$wind:        #7ecbaa;
+$fog:         #a89fcb;
+$warn:        #e8844a;
+
+// ─── Radii ──────────────────────────────────────────────────────────────────
+$radius-base: 8px;
+$radius-card: 12px;
+
+// ─── Sidebar ────────────────────────────────────────────────────────────────
+$sidebar-width: 300px;
+
+// ─── Breakpoints ────────────────────────────────────────────────────────────
+$bp-tablet:  768px;
+$bp-desktop: 1024px;
+
+@mixin tablet  { @media (min-width: $bp-tablet)  { @content; } }
+@mixin desktop { @media (min-width: $bp-desktop) { @content; } }
