@@ -10,9 +10,11 @@ function windDir(deg) {
   if (deg == null) return ''
   return DIRECTIONS[Math.round(deg / 45) % 8]
 }
-function formatTime(iso) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+function formatTime(unixTs) {
+  if (unixTs == null) return '—'
+  return new Date(unixTs * 1000).toLocaleTimeString('es-ES', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid',
+  })
 }
 function formatVis(m) {
   if (m == null) return '—'
@@ -38,7 +40,7 @@ function formatVis(m) {
         <div class="weather-card__label">{{ point.locationName ?? point.label }}</div>
 
         <!-- Hour -->
-        <div class="weather-card__time">{{ formatTime(point.time) }}</div>
+        <div class="weather-card__time">{{ formatTime(point.estimatedArrival) }}</div>
 
         <!-- Weather icon -->
         <div class="weather-card__emoji">{{ getWeatherIcon(point.weathercode) }}</div>

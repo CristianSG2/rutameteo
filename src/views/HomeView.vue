@@ -40,12 +40,11 @@ async function handleSearch(formData) {
     routeGeometry.value = route.geometry
 
     // 3. Sample points with estimated arrival times
-    const rawPoints = getIntermediatePoints(
+    const rawPoints = await getIntermediatePoints(
       route.geometry,
       formData.departureTimestamp,
       formData.intervalKm,
       route.duration,
-      route.distance,
     )
 
     // 4. Fetch weather + reverse-geocode all points in parallel
