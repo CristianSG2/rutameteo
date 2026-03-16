@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import RouteForm from '../components/RouteForm.vue'
 import MapView from '../components/MapView.vue'
 import WeatherStrip from '../components/WeatherStrip.vue'
-import { searchLocation } from '../services/geocodingService.js'
+import { searchLocation, reverseGeocode } from '../services/geocodingService.js'
 import { getRoute, getIntermediatePoints } from '../services/routingService.js'
 import { fetchWeatherForPoints } from '../services/weatherService.js'
 
@@ -48,21 +48,28 @@ async function handleSearch(formData) {
       route.distance,
     )
 
-    // 4. Fetch weather for every sampled point
-    const weather = await fetchWeatherForPoints(rawPoints)
+    // 4. Fetch weather + reverse-geocode all points in parallel
+    const [weather, locationNames] = await Promise.all([
+      fetchWeatherForPoints(rawPoints),
+      Promise.all(rawPoints.map((p) => reverseGeocode(p.lat, p.lon))),
+    ])
 
-    // 5. Enrich with labels, distance and role
+    // 5. Enrich with labels, locationName, distance and role
     weatherPoints.value = weather.map((w, i) => {
-      let label
-      if (i === 0) label = formData.origin
-      else if (i === weather.length - 1) label = formData.destination
-      else label = `km ${Math.round(rawPoints[i].distanceFromStart / 1000)}`
+      const isOrigin = i === 0
+      const isDestination = i === weather.length - 1
+      const kmFallback = `km ${Math.round(rawPoints[i].distanceFromStart / 1000)}`
 
       return {
         ...w,
         distanceFromStart: rawPoints[i].distanceFromStart,
-        label,
-        role: i === 0 ? 'origin' : i === weather.length - 1 ? 'destination' : 'intermediate',
+        locationName: isOrigin ? formData.origin
+          : isDestination ? formData.destination
+          : (locationNames[i] ?? kmFallback),
+        label: isOrigin ? formData.origin
+          : isDestination ? formData.destination
+          : kmFallback,
+        role: isOrigin ? 'origin' : isDestination ? 'destination' : 'intermediate',
       }
     })
   } catch (err) {

@@ -34,8 +34,8 @@ function formatVis(m) {
           'weather-card--destination': i === points.length - 1,
         }"
       >
-        <!-- Point name -->
-        <div class="weather-card__label">{{ point.label }}</div>
+        <!-- Point name: reverse-geocoded locality or km fallback -->
+        <div class="weather-card__label">{{ point.locationName ?? point.label }}</div>
 
         <!-- Hour -->
         <div class="weather-card__time">{{ formatTime(point.time) }}</div>

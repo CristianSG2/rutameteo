@@ -36,6 +36,28 @@ export async function suggestLocations(query) {
 }
 
 /**
+ * Reverse geocodes a coordinate pair to the shortest meaningful place name.
+ * Preference: properties.name → city → county → null (caller provides fallback).
+ * @param {number} lat
+ * @param {number} lon
+ * @returns {Promise<string|null>}
+ */
+export async function reverseGeocode(lat, lon) {
+  const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'rutameteo/1.0', 'Accept-Language': 'es' },
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const a = data.address
+    return a?.village || a?.town || a?.city || a?.county || null
+  } catch {
+    return null
+  }
+}
+
+/**
  * Geocodes a free-text query, returning the best match.
  * @param {string} query
  * @returns {Promise<{ lat: number, lon: number, displayName: string }>}
