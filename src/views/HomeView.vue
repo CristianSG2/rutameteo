@@ -19,12 +19,24 @@ async function handleSearch(formData) {
   weatherPoints.value = []
 
   try {
-    // 1. Geocode all locations in parallel
-    const allNames = [formData.origin, ...formData.stops, formData.destination]
-    const geocoded = await Promise.all(allNames.map((q) => searchLocation(q)))
+    // 1. Resolve coordinates — use pre-geocoded coords when available (autocomplete),
+    //    fall back to Nominatim search only for manually typed values.
+    const allEntries = [
+      { text: formData.origin,      coords: formData.originCoords },
+      ...formData.stops,
+      { text: formData.destination, coords: formData.destinationCoords },
+    ]
+    const geocoded = await Promise.all(
+      allEntries.map(({ text, coords }) => coords ? Promise.resolve(coords) : searchLocation(text))
+    )
 
     // 2. Driving route from OSRM
-    const route = await getRoute(geocoded)
+    let route
+    try {
+      route = await getRoute(geocoded)
+    } catch {
+      throw new Error('Error al calcular la ruta. Inténtalo de nuevo en unos segundos.')
+    }
     routeGeometry.value = route.geometry
 
     // 3. Sample points with estimated arrival times

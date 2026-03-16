@@ -1,15 +1,21 @@
 <script setup>
 import { ref, computed } from 'vue'
+import AutocompleteInput from './AutocompleteInput.vue'
 
 defineProps({ loading: { type: Boolean, default: false } })
 const emit = defineEmits(['search'])
 
-// ── State ──────────────────────────────────────────────────────────────────
-const origin = ref('')
+// ── Text state ─────────────────────────────────────────────────────────────
+const origin      = ref('')
 const destination = ref('')
-const stops = ref([])
+const stops       = ref([])   // [{ id, value, coords: null|{lat,lon} }]
 let stopIdCounter = 0
 
+// ── Pre-geocoded coords (set when user picks from autocomplete) ─────────────
+const originCoords      = ref(null)  // {lat, lon} | null
+const destinationCoords = ref(null)  // {lat, lon} | null
+
+// ── Date / time ────────────────────────────────────────────────────────────
 const now = new Date()
 const pad = (n) => String(n).padStart(2, '0')
 const defaultDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
@@ -19,9 +25,26 @@ const departureDate = ref(defaultDate)
 const departureTime = ref(defaultTime)
 const intervalKm    = ref(30)
 
-// ── Stops ──────────────────────────────────────────────────────────────────
-function addStop() { stops.value.push({ id: ++stopIdCounter, value: '' }) }
-function removeStop(id) { stops.value = stops.value.filter((s) => s.id !== id) }
+// ── Stops helpers ──────────────────────────────────────────────────────────
+function addStop() {
+  stops.value.push({ id: ++stopIdCounter, value: '', coords: null })
+}
+function removeStop(id) {
+  stops.value = stops.value.filter((s) => s.id !== id)
+}
+
+// ── Location selection handlers ────────────────────────────────────────────
+// Called with {lat,lon,displayName} on autocomplete pick, or null on manual edit
+function onOriginSelect(loc) {
+  originCoords.value = loc ? { lat: loc.lat, lon: loc.lon } : null
+}
+function onDestinationSelect(loc) {
+  destinationCoords.value = loc ? { lat: loc.lat, lon: loc.lon } : null
+}
+function onStopSelect(id, loc) {
+  const stop = stops.value.find((s) => s.id === id)
+  if (stop) stop.coords = loc ? { lat: loc.lat, lon: loc.lon } : null
+}
 
 // ── Interval ───────────────────────────────────────────────────────────────
 function dec() { if (intervalKm.value > 20)  intervalKm.value -= 10 }
@@ -35,12 +58,17 @@ const departureTimestamp = computed(() => {
 
 function handleSubmit() {
   if (!origin.value.trim() || !destination.value.trim()) return
+
   emit('search', {
-    origin: origin.value.trim(),
-    stops: stops.value.map((s) => s.value.trim()).filter(Boolean),
-    destination: destination.value.trim(),
+    origin:             origin.value.trim(),
+    originCoords:       originCoords.value,        // coords or null (geocode on demand)
+    stops:              stops.value
+                          .filter((s) => s.value.trim())
+                          .map((s) => ({ text: s.value.trim(), coords: s.coords })),
+    destination:        destination.value.trim(),
+    destinationCoords:  destinationCoords.value,
     departureTimestamp: departureTimestamp.value,
-    intervalKm: intervalKm.value,
+    intervalKm:         intervalKm.value,
   })
 }
 </script>
@@ -52,33 +80,25 @@ function handleSubmit() {
     <section class="form-block">
       <div class="form-block__heading">Ruta</div>
 
-      <!-- Origen -->
       <div class="form-field">
         <label class="form-label">Origen</label>
-        <div class="input-wrap">
-          <span class="input-dot input-dot--amber"></span>
-          <input
-            v-model="origin"
-            type="text"
-            class="input-dotted"
-            placeholder="Ciudad de origen"
-            required
-          />
-        </div>
+        <AutocompleteInput
+          v-model="origin"
+          placeholder="Ciudad de origen"
+          dot-color="var(--app-amber)"
+          :required="true"
+          @select-location="onOriginSelect"
+        />
       </div>
 
-      <!-- Paradas intermedias -->
       <div v-if="stops.length" class="stops-list">
         <div v-for="stop in stops" :key="stop.id" class="stop-row">
-          <div class="input-wrap" style="flex:1">
-            <span class="input-dot input-dot--muted"></span>
-            <input
-              v-model="stop.value"
-              type="text"
-              class="input-dotted"
-              placeholder="Parada intermedia"
-            />
-          </div>
+          <AutocompleteInput
+            v-model="stop.value"
+            placeholder="Parada intermedia"
+            dot-color="var(--app-muted)"
+            @select-location="(loc) => onStopSelect(stop.id, loc)"
+          />
           <button
             type="button"
             class="btn-remove"
@@ -92,19 +112,15 @@ function handleSubmit() {
         <span class="btn-add-stop__icon">+</span>Añadir parada
       </button>
 
-      <!-- Destino -->
       <div class="form-field">
         <label class="form-label">Destino</label>
-        <div class="input-wrap">
-          <span class="input-dot input-dot--blue"></span>
-          <input
-            v-model="destination"
-            type="text"
-            class="input-dotted"
-            placeholder="Ciudad de destino"
-            required
-          />
-        </div>
+        <AutocompleteInput
+          v-model="destination"
+          placeholder="Ciudad de destino"
+          dot-color="var(--app-blue)"
+          :required="true"
+          @select-location="onDestinationSelect"
+        />
       </div>
     </section>
 
@@ -159,11 +175,9 @@ function handleSubmit() {
 <style lang="scss" scoped>
 @use '../assets/styles/variables' as *;
 
-// ── Form shell ─────────────────────────────────────────────────────────────
 .route-form {
   display: flex;
   flex-direction: column;
-  gap: 0;
   padding-bottom: 24px;
 }
 
@@ -189,7 +203,6 @@ function handleSubmit() {
   }
 }
 
-// ── Fields ─────────────────────────────────────────────────────────────────
 .form-field {
   display: flex;
   flex-direction: column;
@@ -207,31 +220,6 @@ function handleSubmit() {
   font-size: 11px;
   font-weight: 600;
   color: var(--app-muted);
-}
-
-// ── Dot inputs ─────────────────────────────────────────────────────────────
-.input-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.input-dot {
-  position: absolute;
-  left: 11px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  z-index: 1;
-
-  &--amber { background: var(--app-amber); }
-  &--muted { background: var(--app-muted); }
-  &--blue  { background: var(--app-blue); }
-}
-
-.input-dotted {
-  padding-left: 28px;
 }
 
 // ── Stops ──────────────────────────────────────────────────────────────────
@@ -256,7 +244,6 @@ function handleSubmit() {
   background: transparent;
   color: var(--app-muted);
   font-size: 18px;
-  line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -264,10 +251,7 @@ function handleSubmit() {
   border: 1px solid var(--app-border);
   transition: color 0.15s, border-color 0.15s;
 
-  &:hover {
-    color: var(--app-warn);
-    border-color: var(--app-warn);
-  }
+  &:hover { color: var(--app-warn); border-color: var(--app-warn); }
 }
 
 .btn-add-stop {
@@ -286,8 +270,7 @@ function handleSubmit() {
   align-self: flex-start;
 
   &:hover { background: rgba(232, 160, 48, 0.18); }
-
-  &__icon { font-size: 16px; line-height: 1; }
+  &__icon  { font-size: 16px; line-height: 1; }
 }
 
 // ── Interval ───────────────────────────────────────────────────────────────
@@ -312,19 +295,14 @@ function handleSubmit() {
   background: var(--app-card);
   color: var(--app-text);
   font-size: 20px;
-  line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--app-border);
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: color 0.15s, border-color 0.15s;
 
-  &:hover:not(:disabled) {
-    color: var(--app-amber);
-    border-color: var(--app-amber);
-  }
-
+  &:hover:not(:disabled) { color: var(--app-amber); border-color: var(--app-amber); }
   &:disabled { opacity: 0.3; cursor: not-allowed; }
 }
 

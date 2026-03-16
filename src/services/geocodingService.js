@@ -1,30 +1,49 @@
-const BASE = 'https://nominatim.openstreetmap.org/search'
-const HEADERS = {
-  'User-Agent': 'rutameteo/1.0',
-  'Accept-Language': 'es',
+const BASE = 'https://photon.komoot.io/api/'
+
+function buildUrl(query, limit) {
+  const params = new URLSearchParams({ q: query, limit })
+  return `${BASE}?${params.toString()}`
 }
 
 /**
- * Geocodes a free-text query using Nominatim (OpenStreetMap).
- * @param {string} query  e.g. "Madrid", "Calle Gran Vía, Barcelona"
+ * Builds a displayName from a Photon GeoJSON feature.
+ */
+function buildDisplayName(feature) {
+  const p = feature.properties
+  const street = p.street && p.housenumber ? `${p.street} ${p.housenumber}` : p.street
+  const parts = [p.name, street, p.city, p.county].filter(Boolean)
+  return [...new Set(parts)].join(', ')
+}
+
+/**
+ * Maps a Photon GeoJSON feature to our standard location object.
+ */
+function toLocation(feature) {
+  const [lon, lat] = feature.geometry.coordinates
+  return { lat, lon, displayName: buildDisplayName(feature) }
+}
+
+/**
+ * Returns up to 5 location suggestions for a partial query (autocomplete).
+ * @param {string} query
+ * @returns {Promise<{ lat: number, lon: number, displayName: string }[]>}
+ */
+export async function suggestLocations(query) {
+  const res = await fetch(buildUrl(query, 5))
+  if (!res.ok) return []
+  const data = await res.json()
+  return (data.features ?? []).map(toLocation)
+}
+
+/**
+ * Geocodes a free-text query, returning the best match.
+ * @param {string} query
  * @returns {Promise<{ lat: number, lon: number, displayName: string }>}
  */
 export async function searchLocation(query) {
-  const url = new URL(BASE)
-  url.searchParams.set('q', query)
-  url.searchParams.set('format', 'json')
-  url.searchParams.set('limit', '1')
-
-  const res = await fetch(url.toString(), { headers: HEADERS })
-  if (!res.ok) throw new Error(`Nominatim error ${res.status} para "${query}"`)
-
+  const res = await fetch(buildUrl(query, 1))
+  if (!res.ok) throw new Error(`Geocoding error ${res.status} para "${query}"`)
   const data = await res.json()
-  if (!data.length) throw new Error(`No se encontró ningún resultado para "${query}"`)
-
-  const [result] = data
-  return {
-    lat: parseFloat(result.lat),
-    lon: parseFloat(result.lon),
-    displayName: result.display_name,
-  }
+  if (!data.features?.length) throw new Error(`No se encontró ningún resultado para "${query}"`)
+  return toLocation(data.features[0])
 }
