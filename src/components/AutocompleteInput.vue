@@ -25,12 +25,11 @@ let debounceTimer = null
 // ── Position ───────────────────────────────────────────────────────────────
 function updatePos() {
   if (!inputEl.value) return
-  const r = inputEl.value.getBoundingClientRect()
-  dropdownPos.value = {
-    top:   r.bottom + 4,
-    left:  r.left,
-    width: r.width,
-  }
+  const r   = inputEl.value.getBoundingClientRect()
+  const vw  = window.innerWidth
+  const w   = Math.min(r.width, vw - 8)          // never wider than viewport
+  const left = Math.max(4, Math.min(r.left, vw - w - 4))  // clamp to screen edges
+  dropdownPos.value = { top: r.bottom + 4, left, width: w }
 }
 
 // ── Input handler ──────────────────────────────────────────────────────────
@@ -186,6 +185,8 @@ onUnmounted(() => {
   border: 1px solid var(--app-border);
   border-radius: $radius-base;
   padding: 8px 12px;
+  // 44px minimum touch target on mobile
+  min-height: 44px;
   font-family: inherit;
   font-size: 14px;
   transition: border-color 0.2s;

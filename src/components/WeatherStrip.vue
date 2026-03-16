@@ -86,6 +86,7 @@ function formatVis(m) {
 }
 
 .weather-strip__inner {
+  // Mobile + desktop: horizontal scroll with snap
   display: flex;
   gap: 10px;
   padding: 12px 14px;
@@ -97,6 +98,25 @@ function formatVis(m) {
   &::-webkit-scrollbar        { height: 4px; }
   &::-webkit-scrollbar-thumb  { background: var(--app-border); border-radius: 99px; }
   &::-webkit-scrollbar-track  { background: transparent; }
+
+  // Tablet: switch to 2-column grid, no horizontal scroll
+  @include tablet {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    overflow-x: visible;
+    scroll-snap-type: none;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  // Desktop: back to flex scroll
+  @include desktop {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 10px;
+    padding: 12px 14px;
+  }
 }
 
 // ── Card ───────────────────────────────────────────────────────────────────
@@ -111,7 +131,13 @@ function formatVis(m) {
   display: flex;
   flex-direction: column;
 
-  @include desktop { width: 130px; }
+  // Tablet grid: cards stretch to fill the grid cell
+  @include tablet {
+    width: auto;
+    scroll-snap-align: none;
+  }
+
+  @include desktop { width: 130px; scroll-snap-align: start; }
 
   &--warn  { border-top-color: var(--app-warn); }
   &--amber { border-top-color: var(--app-amber); }

@@ -13,6 +13,7 @@ const mapEl = ref(null)
 let map = null
 let routeLayer = null
 let markersLayer = null
+let resizeObserver = null
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO']
@@ -126,9 +127,18 @@ onMounted(() => {
   }).addTo(map)
 
   drawRoute()
+
+  // Automatically call invalidateSize whenever the container is resized
+  // (handles mobile→tablet breakpoint switch and any other layout changes)
+  resizeObserver = new ResizeObserver(() => map?.invalidateSize())
+  resizeObserver.observe(mapEl.value)
 })
 
-onUnmounted(() => { map?.remove(); map = null })
+onUnmounted(() => {
+  resizeObserver?.disconnect()
+  map?.remove()
+  map = null
+})
 
 watch(() => [props.routeGeometry, props.weatherPoints], drawRoute, { deep: true })
 </script>

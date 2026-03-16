@@ -137,12 +137,17 @@ async function handleSearch(formData) {
 $topbar-height: 52px;
 
 // ── Shell ──────────────────────────────────────────────────────────────────
+// Mobile: natural page flow (scrollable). Tablet+: locked to 100vh.
 .app-shell {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
   background: var(--app-bg);
+
+  @include tablet {
+    height: 100vh;
+    overflow: hidden;
+  }
 }
 
 // ── Topbar ─────────────────────────────────────────────────────────────────
@@ -153,7 +158,9 @@ $topbar-height: 52px;
   border-bottom: 1px solid var(--app-border);
   display: flex;
   align-items: center;
-  padding: 0 20px;
+  padding: 0 16px;
+
+  @include tablet { padding: 0 20px; }
 
   &__brand {
     display: flex;
@@ -170,6 +177,7 @@ $topbar-height: 52px;
     &--accent { color: var(--app-amber); }
   }
 
+  // Tagline: hidden on mobile, visible from tablet up
   &__tagline {
     font-size: 12px;
     color: var(--app-muted);
@@ -179,35 +187,40 @@ $topbar-height: 52px;
   }
 }
 
-// ── Home row (sidebar + content) ───────────────────────────────────────────
+// ── Home row ───────────────────────────────────────────────────────────────
+// Mobile: single column, natural height.
+// Tablet+: row layout filling remaining viewport height.
 .home {
-  flex: 1;
-  height: 0;            // flex trick: allows height:100% to resolve in children
   display: flex;
   flex-direction: column;
 
-  @include desktop {
+  @include tablet {
+    flex: 1;
+    height: 0;          // flex trick: resolves 100% for children
     flex-direction: row;
   }
 }
 
 // ── Sidebar ────────────────────────────────────────────────────────────────
 .sidebar {
+  // Mobile: full-width, content-driven height, no scroll clipping
   width: 100%;
   background: var(--app-surface);
   border-bottom: 1px solid var(--app-border);
-  overflow-y: auto;
   flex-shrink: 0;
-  max-height: 44vh;
 
-  @include tablet { max-height: 48vh; }
-
-  @include desktop {
-    width: $sidebar-width;
+  // Tablet: fixed-width column, scrollable
+  @include tablet {
+    width: 260px;
     height: 100%;
-    max-height: 100%;
     border-bottom: none;
     border-right: 1px solid var(--app-border);
+    overflow-y: auto;
+  }
+
+  // Desktop: wider sidebar
+  @include desktop {
+    width: $sidebar-width;
   }
 
   &__error {
@@ -233,24 +246,43 @@ $topbar-height: 52px;
 
 // ── Content (map + strip) ──────────────────────────────────────────────────
 .content {
-  flex: 1;
-  height: 0;            // flex trick
   display: flex;
   flex-direction: column;
   position: relative;   // anchor for loading-overlay
 
+  // Mobile: natural height — map is 350px, strip is auto
+  flex-shrink: 0;
+
+  // Tablet+: .content is a FLEX ROW item inside .home.
+  // Do NOT use height:0 here — that kills cross-axis stretching.
+  // flex:1 handles width growth; align-self:stretch (default) handles height.
+  // min-height:0 prevents the default min-height:auto from causing overflow.
+  @include tablet {
+    flex: 1;
+    min-height: 0;
+    width: calc(100% - 260px);
+  }
+
   @include desktop {
-    height: 100%;
-    flex: none;
     width: calc(100% - #{$sidebar-width});
   }
 }
 
 // ── Map area ───────────────────────────────────────────────────────────────
+// .map-area IS a flex COLUMN item inside .content — height:0 trick is correct here.
 .map-area {
-  flex: 1;
-  height: 0;            // flex trick: Leaflet needs a resolved pixel height
   position: relative;
+
+  // Mobile: explicit pixel height — Leaflet requires it
+  height: 350px;
+  flex-shrink: 0;
+
+  // Tablet+: grow to fill all space above WeatherStrip
+  @include tablet {
+    flex: 1;
+    height: 0;          // flex trick: lets height:100% resolve inside MapView
+    min-height: 0;
+  }
 }
 
 // ── Loading overlay (map-only) ─────────────────────────────────────────────
