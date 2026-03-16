@@ -1,48 +1,4 @@
-const OSRM_BASE = 'http://router.project-osrm.org/route/v1/driving'
-
-/**
- * Decodes a polyline encoded string into an array of [lat, lon] pairs.
- * Uses the standard precision of 1e-5.
- * @param {string} encoded
- * @returns {[number, number][]}
- */
-function decodePolyline(encoded) {
-  const coords = []
-  let index = 0
-  let lat = 0
-  let lon = 0
-
-  while (index < encoded.length) {
-    let shift = 0
-    let result = 0
-    let byte
-
-    do {
-      byte = encoded.charCodeAt(index++) - 63
-      result |= (byte & 0x1f) << shift
-      shift += 5
-    } while (byte >= 0x20)
-
-    const dLat = result & 1 ? ~(result >> 1) : result >> 1
-    lat += dLat
-
-    shift = 0
-    result = 0
-
-    do {
-      byte = encoded.charCodeAt(index++) - 63
-      result |= (byte & 0x1f) << shift
-      shift += 5
-    } while (byte >= 0x20)
-
-    const dLon = result & 1 ? ~(result >> 1) : result >> 1
-    lon += dLon
-
-    coords.push([lat / 1e5, lon / 1e5])
-  }
-
-  return coords
-}
+const OSRM_BASE = 'https://router.project-osrm.org/route/v1/driving'
 
 /**
  * Haversine distance in meters between two [lat, lon] points.
@@ -66,8 +22,9 @@ function haversineMeters([lat1, lon1], [lat2, lon2]) {
 export async function getRoute(waypoints) {
   if (waypoints.length < 2) throw new Error('At least 2 waypoints required')
 
+  // OSRM expects coordinates in lon,lat order
   const coords = waypoints.map(({ lat, lon }) => `${lon},${lat}`).join(';')
-  const url = `${OSRM_BASE}/${coords}?overview=full&geometries=polyline&steps=false`
+  const url = `${OSRM_BASE}/${coords}?overview=full&geometries=geojson&steps=false`
 
   const res = await fetch(url)
   if (!res.ok) throw new Error(`OSRM error: ${res.status}`)
@@ -76,7 +33,8 @@ export async function getRoute(waypoints) {
   if (data.code !== 'Ok') throw new Error(`OSRM: ${data.message || data.code}`)
 
   const route = data.routes[0]
-  const geometry = decodePolyline(route.geometry)
+  // GeoJSON coordinates are [lon, lat] — swap to [lat, lon] for Leaflet
+  const geometry = route.geometry.coordinates.map(([lon, lat]) => [lat, lon])
 
   return {
     geometry,
