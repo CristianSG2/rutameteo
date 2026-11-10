@@ -20,10 +20,9 @@ function formatVis(m) {
   if (m == null) return '—'
   return m >= 1000 ? `${(m / 1000).toFixed(0)} km` : `${m} m`
 }
-function formatPrecipitation(mm, probability) {
+function formatPrecipitation(mm) {
   if (mm == null || mm < 0.1) return null
-  const mmLabel = `${mm.toFixed(1).replace('.', ',')} mm`
-  return probability != null ? `${mmLabel} · ${probability}%` : mmLabel
+  return `${mm.toFixed(1).replace('.', ',')} mm`
 }
 </script>
 
@@ -64,9 +63,9 @@ function formatPrecipitation(mm, probability) {
             <span class="metric__icon">🌧</span>
             <span>{{ point.precipitationProbability != null ? `${point.precipitationProbability}%` : '—' }}</span>
           </div>
-          <div v-if="formatPrecipitation(point.precipitation, point.precipitationProbability)" class="metric">
+          <div v-if="formatPrecipitation(point.precipitation)" class="metric">
             <span class="metric__icon">💧</span>
-            <span>{{ formatPrecipitation(point.precipitation, point.precipitationProbability) }}</span>
+            <span>{{ formatPrecipitation(point.precipitation) }}</span>
           </div>
           <div class="metric">
             <span class="metric__icon">💨</span>
