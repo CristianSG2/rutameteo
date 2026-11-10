@@ -3,6 +3,7 @@ const BASE_URL = 'https://api.open-meteo.com/v1/forecast'
 const HOURLY_VARS = [
   'temperature_2m',
   'precipitation_probability',
+  'precipitation',
   'windspeed_10m',
   'winddirection_10m',
   'visibility',
@@ -58,6 +59,7 @@ export async function fetchWeatherForPoints(points) {
       time,
       temperature_2m,
       precipitation_probability,
+      precipitation,
       windspeed_10m,
       winddirection_10m,
       visibility,
@@ -72,6 +74,7 @@ export async function fetchWeatherForPoints(points) {
       estimatedArrival,
       temperature: temperature_2m[idx],
       precipitationProbability: precipitation_probability[idx],
+      precipitation: precipitation?.[idx],
       windspeed: windspeed_10m[idx],
       winddirection: winddirection_10m[idx],
       visibility: visibility[idx],
